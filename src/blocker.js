@@ -16,23 +16,52 @@ const RUN_BLOCKER_ID = "runBlocker";
 const PI_ID = "pi";
 
 var myDedicatedWorker;
+var mySharedWorker;
 
 if (window.Worker) {
   myDedicatedWorker = new Worker(new URL("./modules/dw.js", import.meta.url), {
     type: "module",
-    name: "dedicatedWorker",
+    name: "myDedicatedWorker",
   });
+
+  mySharedWorker = new SharedWorker(
+    new URL("data-url:./modules/sharedWorker.js", import.meta.url),
+    {
+      type: "module",
+      name: "mySharedWorker",
+    }
+  );
+
   myDedicatedWorker.onmessage = (event) => {
     const message = event.data;
     switch (message.type) {
       case "piResult":
-        console.log(message.result);
-        signalIdleState(message.result);
+        signalIdleState(message.value);
         break;
       default:
         break;
     }
   };
+
+  mySharedWorker.port.onmessage = (event) => {
+    const message = event.data;
+
+    switch (message.type) {
+      case "setRunning":
+        signalRunningState();
+        break;
+      case "piResult":
+        signalIdleState(message.value);
+        break;
+      default:
+        break;
+    }
+  };
+
+  mySharedWorker.port.start();
+
+  console.log("Registered Worker 'myDedicatedWorker': ", myDedicatedWorker);
+  console.log("Registered Worker 'mySharedWorker': ", mySharedWorker);
 } else {
   console.error("Your Webbrowser does not support Web Workers😒 based!");
 }
@@ -81,9 +110,8 @@ function block(seconds) {
   const executionMode = execElem.options[execElem.selectedIndex].text;
 
   if (executionMode === "shared worker") {
-    //let a shared worker perform the computation
+    mySharedWorker.port.postMessage({ type: "block", value: 5 });
   } else if (executionMode === "dedicated worker") {
-    console.log("Sending to dedicated Worker");
     myDedicatedWorker.postMessage({ type: "block", value: 5 });
   } else {
     /* progressive degrade to single threaded behavior */

@@ -8,10 +8,8 @@ onmessage = (event) => {
       console.log(message.value);
       break;
     case "block":
-      console.log("time to block");
       let guess = giveMePi(message.value);
-      postMessage({ type: "piResult", result: guess });
-      console.log("done Blocking");
+      postMessage({ type: "piResult", value: guess });
       break;
 
     default:
